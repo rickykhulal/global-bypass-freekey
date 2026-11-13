@@ -56,7 +56,10 @@ class GlobalBypassBot(commands.Bot):
             self.voice_keepalive_loop.start()
 
     async def ensure_voice_connection(self):
-        """Ensures the bot stays connected 24/7 to the configured voice channel."""
+        """Ensures the bot connects to the configured voice channel without blocking the gateway."""
+        if getattr(self, "_voice_connecting", False):
+            return
+        self._voice_connecting = True
         try:
             settings = database.get_all_settings()
             vc_id_str = settings.get("voice_channel", "0")
@@ -72,16 +75,21 @@ class GlobalBypassBot(commands.Bot):
             voice_client = guild.voice_client
 
             if voice_client is None or not voice_client.is_connected():
-                print(f"[*] Connecting to 24/7 Voice Channel: {target_channel.name} ({target_channel.id})...")
-                await target_channel.connect(self_deaf=True, reconnect=True)
-                print(f"[+] Connected to 24/7 Voice Channel: {target_channel.name}")
+                print(f"[*] Connecting to Voice Channel: {target_channel.name} ({target_channel.id})...")
+                # Strict 5s timeout prevents blocking async event loop if UDP is restricted
+                await asyncio.wait_for(target_channel.connect(self_deaf=True, reconnect=False), timeout=5.0)
+                print(f"[+] Connected to Voice Channel: {target_channel.name}")
             elif voice_client.channel.id != vc_id:
                 print(f"[*] Moving to configured Voice Channel: {target_channel.name}...")
-                await voice_client.move_to(target_channel)
+                await asyncio.wait_for(voice_client.move_to(target_channel), timeout=5.0)
+        except asyncio.TimeoutError:
+            print("[!] Voice connect timed out (host environment may restrict UDP). Gateway remains unaffected.")
         except Exception as e:
-            print(f"[!] Error ensuring voice connection: {e}")
+            print(f"[!] Voice connection notice: {e}")
+        finally:
+            self._voice_connecting = False
 
-    @tasks.loop(seconds=45)
+    @tasks.loop(minutes=2)
     async def voice_keepalive_loop(self):
         await self.ensure_voice_connection()
 
@@ -90,13 +98,13 @@ class GlobalBypassBot(commands.Bot):
         await self.wait_until_ready()
 
     async def on_voice_state_update(self, member, before, after):
-        # Auto-reconnect if bot is kicked/moved from voice channel
+        # Auto-reconnect if bot is disconnected from voice
         if member.id == self.user.id and after.channel is None:
             settings = database.get_all_settings()
             vc_id_str = settings.get("voice_channel", "0")
             if vc_id_str and vc_id_str != "0":
-                await asyncio.sleep(3)
-                await self.ensure_voice_connection()
+                await asyncio.sleep(5)
+                asyncio.create_task(self.ensure_voice_connection())
 
     async def on_ready(self):
         print("=" * 60)
@@ -110,12 +118,12 @@ class GlobalBypassBot(commands.Bot):
         print(f"[*] Bot Invite Link: {invite_url}")
         print("=" * 60)
 
-        # Connect to 24/7 voice channel
-        await self.ensure_voice_connection()
-
-        # Set bot presence
+        # Set bot presence immediately
         activity = discord.Activity(type=discord.ActivityType.watching, name="GLOBAL BYPASS | /panel_free")
         await self.change_presence(status=discord.Status.online, activity=activity)
+
+        # Trigger voice connect in background without blocking on_ready
+        asyncio.create_task(self.ensure_voice_connection())
 
 async def main():
     token = config.BOT_TOKEN

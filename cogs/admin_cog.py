@@ -223,23 +223,30 @@ class AdminCog(commands.Cog):
                 await interaction.response.send_message("❌ Please specify a voice channel or join one first!", ephemeral=True)
                 return
 
+        await interaction.response.defer(ephemeral=True)
+
         database.set_setting("voice_channel", str(target_vc.id))
         guild = interaction.guild
         voice_client = guild.voice_client
 
         try:
+            import asyncio
             if voice_client is None or not voice_client.is_connected():
-                await target_vc.connect(self_deaf=True, reconnect=True)
+                await asyncio.wait_for(target_vc.connect(self_deaf=True, reconnect=False), timeout=5.0)
             else:
-                await voice_client.move_to(target_vc)
+                await asyncio.wait_for(voice_client.move_to(target_vc), timeout=5.0)
 
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"✅ Connected to {target_vc.mention} (`{target_vc.id}`)!\n"
-                f"The bot will now stay in this channel 24/7 with automatic reconnect.",
+                f"The bot will now stay in this channel with automatic reconnect.",
                 ephemeral=True
             )
-        except Exception as e:
-            await interaction.response.send_message(f"❌ Failed to join voice channel: `{e}`", ephemeral=True)
+        except (asyncio.TimeoutError, Exception) as e:
+            await interaction.followup.send(
+                f"⚠️ Could not connect to voice channel: `{e}`\n"
+                f"*Note: Free cloud hosts like Render block UDP voice traffic. If hosted on Render, text/button panels work 100%, but voice requires a VPS/desktop.*",
+                ephemeral=True
+            )
 
     @app_commands.command(name="leave_vc", description="Make the bot disconnect from the voice channel.")
     async def leave_vc(self, interaction: discord.Interaction):
@@ -304,7 +311,8 @@ class AdminCog(commands.Cog):
             database.set_setting("voice_channel", str(voice_channel.id))
             updates.append(f"24/7 Voice Channel: {voice_channel.mention}")
             if hasattr(self.bot, "ensure_voice_connection"):
-                await self.bot.ensure_voice_connection()
+                import asyncio
+                asyncio.create_task(self.bot.ensure_voice_connection())
         if free_role:
             database.set_setting("allowed_free_roles", str(free_role.id))
             updates.append(f"Allowed FREE Role: {free_role.mention}")
