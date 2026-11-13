@@ -20,6 +20,9 @@ class AdminCog(commands.Cog):
             await interaction.response.send_message("⛔ You do not have permission to use this command.", ephemeral=True)
             return
 
+        # Defer immediately to prevent Discord's 3-second interaction timeout
+        await interaction.response.defer(ephemeral=True)
+
         target_ch = channel or interaction.channel
         embed = create_free_panel_embed()
         import os
@@ -32,7 +35,7 @@ class AdminCog(commands.Cog):
         database.set_setting("free_channel", str(target_ch.id))
         database.set_setting("free_panel_message_id", str(msg.id))
 
-        await interaction.response.send_message(f"✅ Free Access Panel sent to {target_ch.mention}!", ephemeral=True)
+        await interaction.followup.send(f"✅ Free Access Panel successfully sent to {target_ch.mention}!", ephemeral=True)
 
     @app_commands.command(name="panel_admin", description="Deploy the Settings / Admin panel.")
     @app_commands.describe(channel="Admin channel to send the settings panel (defaults to current channel)")
@@ -40,6 +43,9 @@ class AdminCog(commands.Cog):
         if not is_admin(interaction.user):
             await interaction.response.send_message("⛔ You do not have permission to use this command.", ephemeral=True)
             return
+
+        # Defer immediately to prevent Discord's 3-second interaction timeout
+        await interaction.response.defer(ephemeral=True)
 
         target_ch = channel or interaction.channel
         embed = create_admin_panel_embed()
@@ -53,7 +59,7 @@ class AdminCog(commands.Cog):
         database.set_setting("admin_panel_channel", str(target_ch.id))
         database.set_setting("admin_panel_message_id", str(msg.id))
 
-        await interaction.response.send_message(f"✅ Settings Panel sent to {target_ch.mention}!", ephemeral=True)
+        await interaction.followup.send(f"✅ Settings Panel successfully sent to {target_ch.mention}!", ephemeral=True)
 
     @app_commands.command(name="feed_keys", description="Feed keys with optional passwords into the stock.")
     @app_commands.describe(

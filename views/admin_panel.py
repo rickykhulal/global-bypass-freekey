@@ -189,12 +189,14 @@ class AdminPanelView(View):
 
     @discord.ui.button(label="Deploy Free Panel", style=discord.ButtonStyle.primary, emoji="📢", row=3, custom_id="admin_btn_deploy_free")
     async def deploy_free_btn(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
+
         settings = database.get_all_settings()
         ch_id = int(settings.get("free_channel", "0") or 0)
         target_ch = interaction.guild.get_channel(ch_id) if ch_id else interaction.channel
 
         if not target_ch:
-            await interaction.response.send_message("❌ Target channel not found. Please set Free Channel first.", ephemeral=True)
+            await interaction.followup.send("❌ Target channel not found. Please set Free Channel first.", ephemeral=True)
             return
 
         embed = create_free_panel_embed()
@@ -206,4 +208,4 @@ class AdminPanelView(View):
             msg = await target_ch.send(embed=embed, view=FreePanelView())
         database.set_setting("free_panel_message_id", str(msg.id))
         database.set_setting("free_channel", str(target_ch.id))
-        await interaction.response.send_message(f"✅ Free Access Panel deployed in {target_ch.mention}!", ephemeral=True)
+        await interaction.followup.send(f"✅ Free Access Panel deployed in {target_ch.mention}!", ephemeral=True)
