@@ -208,6 +208,55 @@ class AdminCog(commands.Cog):
                 ephemeral=True
             )
 
+    @app_commands.command(name="join_vc", description="Make the bot join a voice channel and stay 24/7.")
+    @app_commands.describe(channel="Voice channel to join (defaults to your current voice channel)")
+    async def join_vc(self, interaction: discord.Interaction, channel: discord.VoiceChannel = None):
+        if not is_admin(interaction.user):
+            await interaction.response.send_message("⛔ You do not have permission to use this command.", ephemeral=True)
+            return
+
+        target_vc = channel
+        if not target_vc:
+            if hasattr(interaction.user, "voice") and interaction.user.voice and interaction.user.voice.channel:
+                target_vc = interaction.user.voice.channel
+            else:
+                await interaction.response.send_message("❌ Please specify a voice channel or join one first!", ephemeral=True)
+                return
+
+        database.set_setting("voice_channel", str(target_vc.id))
+        guild = interaction.guild
+        voice_client = guild.voice_client
+
+        try:
+            if voice_client is None or not voice_client.is_connected():
+                await target_vc.connect(self_deaf=True, reconnect=True)
+            else:
+                await voice_client.move_to(target_vc)
+
+            await interaction.response.send_message(
+                f"✅ Connected to {target_vc.mention} (`{target_vc.id}`)!\n"
+                f"The bot will now stay in this channel 24/7 with automatic reconnect.",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Failed to join voice channel: `{e}`", ephemeral=True)
+
+    @app_commands.command(name="leave_vc", description="Make the bot disconnect from the voice channel.")
+    async def leave_vc(self, interaction: discord.Interaction):
+        if not is_admin(interaction.user):
+            await interaction.response.send_message("⛔ You do not have permission to use this command.", ephemeral=True)
+            return
+
+        database.set_setting("voice_channel", "0")
+        guild = interaction.guild
+        voice_client = guild.voice_client
+
+        if voice_client and voice_client.is_connected():
+            await voice_client.disconnect(force=True)
+            await interaction.response.send_message("✅ Disconnected from voice channel and disabled 24/7 VC.", ephemeral=True)
+        else:
+            await interaction.response.send_message("⚠️ The bot is not currently connected to any voice channel.", ephemeral=True)
+
     @app_commands.command(name="setup", description="Configure bot channels, roles, and logging.")
     @app_commands.describe(
         free_channel="Channel for Free Access Panel",
@@ -215,6 +264,7 @@ class AdminCog(commands.Cog):
         admin_logs="Channel for Admin panel logs",
         paid_channel="Channel for Paid access",
         paid_logs="Channel for Paid logs",
+        voice_channel="24/7 Voice Channel for the bot",
         free_role="Role required to use the Free bot features",
         paid_role="Role required for Paid access"
     )
@@ -226,6 +276,7 @@ class AdminCog(commands.Cog):
         admin_logs: discord.TextChannel = None,
         paid_channel: discord.TextChannel = None,
         paid_logs: discord.TextChannel = None,
+        voice_channel: discord.VoiceChannel = None,
         free_role: discord.Role = None,
         paid_role: discord.Role = None
     ):
@@ -249,6 +300,11 @@ class AdminCog(commands.Cog):
         if paid_logs:
             database.set_setting("paid_logs", str(paid_logs.id))
             updates.append(f"Paid Logs: {paid_logs.mention}")
+        if voice_channel:
+            database.set_setting("voice_channel", str(voice_channel.id))
+            updates.append(f"24/7 Voice Channel: {voice_channel.mention}")
+            if hasattr(self.bot, "ensure_voice_connection"):
+                await self.bot.ensure_voice_connection()
         if free_role:
             database.set_setting("allowed_free_roles", str(free_role.id))
             updates.append(f"Allowed FREE Role: {free_role.mention}")

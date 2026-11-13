@@ -98,7 +98,9 @@ The project includes built-in keep-alive web server (`server.py`) and `render.ya
 | `/reset_limits [user]` | Reset free limits (all users or specific user) | Admin / Owner |
 | `/delete_user <user>` | Revoke user key and clear user claim | Admin / Owner |
 | `/set_role [role] [tier]` | Restrict bot usage to a specific Discord role (leave empty for Everyone) | Admin / Owner |
-| `/setup [free_channel] [logs] [free_role]...` | Configure Discord channels and roles for panels and logs | Admin / Owner |
+| `/join_vc [channel]` | Join a voice channel and keep 24/7 presence with auto-reconnect | Admin / Owner |
+| `/leave_vc` | Disconnect from the voice channel and disable 24/7 VC | Admin / Owner |
+| `/setup [free_channel] [logs] [voice_channel]...` | Configure Discord channels, voice, and roles | Admin / Owner |
 
 ---
 
