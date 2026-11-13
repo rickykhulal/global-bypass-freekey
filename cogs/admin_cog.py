@@ -181,13 +181,42 @@ class AdminCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="setup", description="Configure bot channels and logging.")
+    @app_commands.command(name="set_role", description="Configure which role is authorized to use the bot.")
+    @app_commands.describe(
+        role="The Discord role required to use the bot (leave empty to reset to Everyone)",
+        tier="Which access tier to apply to (FREE or PAID)"
+    )
+    @app_commands.choices(tier=[
+        app_commands.Choice(name="FREE", value="FREE"),
+        app_commands.Choice(name="PAID", value="PAID")
+    ])
+    async def set_role(self, interaction: discord.Interaction, role: discord.Role = None, tier: str = "FREE"):
+        if not is_admin(interaction.user):
+            await interaction.response.send_message("⛔ You do not have permission to use this command.", ephemeral=True)
+            return
+
+        key = "allowed_free_roles" if tier == "FREE" else "allowed_paid_roles"
+        if role is None:
+            database.set_setting(key, "")
+            await interaction.response.send_message(f"✅ Role restriction removed for **{tier}**. **Everyone** can now use the bot.", ephemeral=True)
+        else:
+            database.set_setting(key, str(role.id))
+            await interaction.response.send_message(
+                f"✅ **Role restriction set!**\n"
+                f"Only members with {role.mention} (`{role.id}`) are authorized to use **{tier}** bot features.\n"
+                f"Other members can view the panel, but will be denied access if they try to use it.",
+                ephemeral=True
+            )
+
+    @app_commands.command(name="setup", description="Configure bot channels, roles, and logging.")
     @app_commands.describe(
         free_channel="Channel for Free Access Panel",
         free_logs="Channel for Free key claim logs",
         admin_logs="Channel for Admin panel logs",
         paid_channel="Channel for Paid access",
-        paid_logs="Channel for Paid logs"
+        paid_logs="Channel for Paid logs",
+        free_role="Role required to use the Free bot features",
+        paid_role="Role required for Paid access"
     )
     async def setup(
         self,
@@ -196,7 +225,9 @@ class AdminCog(commands.Cog):
         free_logs: discord.TextChannel = None,
         admin_logs: discord.TextChannel = None,
         paid_channel: discord.TextChannel = None,
-        paid_logs: discord.TextChannel = None
+        paid_logs: discord.TextChannel = None,
+        free_role: discord.Role = None,
+        paid_role: discord.Role = None
     ):
         if not is_admin(interaction.user):
             await interaction.response.send_message("⛔ You do not have permission to use this command.", ephemeral=True)
@@ -218,9 +249,15 @@ class AdminCog(commands.Cog):
         if paid_logs:
             database.set_setting("paid_logs", str(paid_logs.id))
             updates.append(f"Paid Logs: {paid_logs.mention}")
+        if free_role:
+            database.set_setting("allowed_free_roles", str(free_role.id))
+            updates.append(f"Allowed FREE Role: {free_role.mention}")
+        if paid_role:
+            database.set_setting("allowed_paid_roles", str(paid_role.id))
+            updates.append(f"Allowed PAID Role: {paid_role.mention}")
 
         if not updates:
-            await interaction.response.send_message("⚠️ No channels specified to update.", ephemeral=True)
+            await interaction.response.send_message("⚠️ No channels or roles specified to update.", ephemeral=True)
             return
 
         embed = discord.Embed(

@@ -15,6 +15,45 @@ def parse_hex_color(hex_str: str, default: int = 0x00FFA2) -> int:
     except Exception:
         return default
 
+def check_user_role_access(interaction: discord.Interaction) -> tuple[bool, str]:
+    """
+    Checks if the interacting user has the required role to use the bot.
+    Returns: (is_allowed: bool, required_roles_display: str)
+    """
+    user = interaction.user
+
+    # 1. Guild Administrators always bypass
+    if hasattr(user, "guild_permissions") and user.guild_permissions.administrator:
+        return True, ""
+
+    settings = database.get_all_settings()
+
+    # 2. Admin panel owners always bypass
+    owners_str = settings.get("admin_panel_owners", "")
+    owner_ids = [int(i.strip()) for i in owners_str.split(",") if i.strip().isdigit()]
+    if user.id in owner_ids:
+        return True, ""
+
+    # 3. Check allowed FREE roles
+    allowed_roles_str = settings.get("allowed_free_roles", "").strip()
+    if not allowed_roles_str:
+        # If no role is configured, all members can use it
+        return True, ""
+
+    allowed_role_ids = [int(r.strip()) for r in allowed_roles_str.split(",") if r.strip().isdigit()]
+    if not allowed_role_ids:
+        return True, ""
+
+    # 4. Check if member has at least one of the allowed roles
+    if hasattr(user, "roles"):
+        user_role_ids = {r.id for r in user.roles}
+        if any(rid in user_role_ids for rid in allowed_role_ids):
+            return True, ""
+
+    # Format allowed roles for notification
+    roles_display = ", ".join([f"<@&{rid}>" for rid in allowed_role_ids])
+    return False, roles_display
+
 def create_free_panel_embed() -> discord.Embed:
     settings = database.get_all_settings()
     bot_name = settings.get("bot_name", "GLOBAL BYPASS")
@@ -67,6 +106,17 @@ class FreePanelView(View):
         custom_id="btn_free_generate_user"
     )
     async def generate_user_button(self, interaction: discord.Interaction, button: Button):
+        # Role-based permission check
+        allowed, req_roles = check_user_role_access(interaction)
+        if not allowed:
+            await interaction.response.send_message(
+                f"⛔ **Access Denied!**\n"
+                f"You do not have the required role to use this bot.\n"
+                f"**Required Role(s):** {req_roles}",
+                ephemeral=True
+            )
+            return
+
         user_id = interaction.user.id
         now_ts = time.time()
 
@@ -194,6 +244,17 @@ class FreePanelView(View):
         custom_id="btn_free_view_user"
     )
     async def view_user_button(self, interaction: discord.Interaction, button: Button):
+        # Role-based permission check
+        allowed, req_roles = check_user_role_access(interaction)
+        if not allowed:
+            await interaction.response.send_message(
+                f"⛔ **Access Denied!**\n"
+                f"You do not have the required role to use this bot.\n"
+                f"**Required Role(s):** {req_roles}",
+                ephemeral=True
+            )
+            return
+
         user_id = interaction.user.id
         record = database.get_user_active_key(user_id, "FREE")
 

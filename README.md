@@ -97,7 +97,16 @@ The project includes built-in keep-alive web server (`server.py`) and `render.ya
 | `/stock` | View available and claimed key statistics | Everyone |
 | `/reset_limits [user]` | Reset free limits (all users or specific user) | Admin / Owner |
 | `/delete_user <user>` | Revoke user key and clear user claim | Admin / Owner |
-| `/setup [free_channel] [logs]...` | Configure Discord channels for panels and logs | Admin / Owner |
+| `/set_role [role] [tier]` | Restrict bot usage to a specific Discord role (leave empty for Everyone) | Admin / Owner |
+| `/setup [free_channel] [logs] [free_role]...` | Configure Discord channels and roles for panels and logs | Admin / Owner |
+
+---
+
+## 👥 Role-Based Access Control (Exclusive Access)
+- **Public Visibility, Restricted Action**: The panels can be posted in any channel visible to all server members.
+- **Role Enforcement**: Only users who possess the configured role (e.g. via `/set_role role:@Member` or via the **🛡️ Admin** modal in the Settings panel) can interact with **🎁 Generate User** and **🔍 View User**.
+- **Ephemeral Rejection**: If an unauthorized user clicks a button, the bot responds privately to them: `⛔ Access Denied! You do not have the required role to use this bot. Required Role(s): <@&role_id>`.
+- **Admin Bypass**: Server Administrators and designated Admin Panel Owners can always use and test the bot regardless of role restrictions.
 
 ---
 

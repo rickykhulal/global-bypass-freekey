@@ -251,6 +251,13 @@ class AdminConfigModal(Modal, title="Configure Admins & Roles"):
         required=False,
         max_length=1000
     )
+    allowed_free_roles_input = TextInput(
+        label="Allowed FREE Roles IDs (comma separated)",
+        style=discord.TextStyle.paragraph,
+        placeholder="e.g. 1560655816477114509 (leave empty for everyone)",
+        required=False,
+        max_length=1000
+    )
     allowed_roles_input = TextInput(
         label="Allowed PAID Roles IDs (comma separated)",
         style=discord.TextStyle.paragraph,
@@ -263,10 +270,12 @@ class AdminConfigModal(Modal, title="Configure Admins & Roles"):
         super().__init__()
         settings = database.get_all_settings()
         self.admin_owners_input.default = settings.get("admin_panel_owners", "")
+        self.allowed_free_roles_input.default = settings.get("allowed_free_roles", "")
         self.allowed_roles_input.default = settings.get("allowed_paid_roles", "")
 
     async def on_submit(self, interaction: discord.Interaction):
         database.set_setting("admin_panel_owners", self.admin_owners_input.value.strip())
+        database.set_setting("allowed_free_roles", self.allowed_free_roles_input.value.strip())
         database.set_setting("allowed_paid_roles", self.allowed_roles_input.value.strip())
         await interaction.response.send_message("✅ Admin owners and allowed roles saved.", ephemeral=True)
 

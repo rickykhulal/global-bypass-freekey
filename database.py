@@ -77,6 +77,7 @@ def init_db():
         "admin_panel_channel": "1560623103699062846",
         "admin_panel_logs": "1560623103699062846",
         "voice_channel": "1560614980158750797",
+        "allowed_free_roles": "",
         "allowed_paid_roles": "1560655816477114509",
         "paid_owners": "1392630988622008352, 375765136658661377",
         "admin_panel_owners": "1392630988622008352, 1190844956395446397",

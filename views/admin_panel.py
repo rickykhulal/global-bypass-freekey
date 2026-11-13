@@ -15,7 +15,7 @@ from views.free_panel import parse_hex_color, FreePanelView, create_free_panel_e
 
 def is_admin(user: discord.User | discord.Member) -> bool:
     # Check guild administrator permission
-    if isinstance(user, discord.Member) and user.guild_permissions.administrator:
+    if hasattr(user, "guild_permissions") and user.guild_permissions.administrator:
         return True
     
     settings = database.get_all_settings()
@@ -42,6 +42,7 @@ def create_admin_panel_embed() -> discord.Embed:
     free_ch = settings.get("free_channel", "0")
     free_logs = settings.get("free_logs", "0")
     voice_ch = settings.get("voice_channel", "0")
+    allowed_free_roles = settings.get("allowed_free_roles", "")
     allowed_roles = settings.get("allowed_paid_roles", "None")
     paid_owners = settings.get("paid_owners", "None")
     admin_owners = settings.get("admin_panel_owners", "None")
@@ -75,6 +76,7 @@ def create_admin_panel_embed() -> discord.Embed:
 
     embed.add_field(name="FREE logs", value=f"`{free_logs}`" if free_logs != "0" else "`Not configured`", inline=True)
     embed.add_field(name="Voice channel", value=f"`{voice_ch}`" if voice_ch != "0" else "`Not configured`", inline=True)
+    embed.add_field(name="Allowed FREE roles", value=f"`{allowed_free_roles}`" if allowed_free_roles else "`Everyone`", inline=True)
     embed.add_field(name="Allowed PAID roles", value=f"`{allowed_roles}`" if allowed_roles else "`None`", inline=True)
 
     embed.add_field(name="PAID owners", value=f"`{paid_owners}`" if paid_owners else "`None`", inline=True)
