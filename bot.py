@@ -9,6 +9,7 @@ if sys.stdout.encoding != 'utf-8':
 
 import asyncio
 import os
+import aiohttp
 import discord
 from discord.ext import commands, tasks
 
@@ -49,12 +50,6 @@ class GlobalBypassBot(commands.Bot):
             print(f"[+] Successfully synced {len(synced)} slash commands.")
         except Exception as e:
             print(f"[-] Failed to sync slash commands: {e}")
-
-        # Start background web server for Render / monitoring
-        try:
-            await start_server(config.PORT)
-        except Exception as e:
-            print(f"[!] Web server could not bind to port {config.PORT}: {e}")
 
         # Start 24/7 voice keepalive loop
         if not self.voice_keepalive_loop.is_running():
@@ -128,9 +123,27 @@ async def main():
         print("[-] Error: No Discord bot token found in .env or config.py!")
         return
 
-    bot = GlobalBypassBot()
-    async with bot:
-        await bot.start(token)
+    # Start Keep-Alive Web Server FIRST so Render health checks pass immediately
+    try:
+        await start_server(config.PORT)
+    except Exception as e:
+        print(f"[!] Web server binding: {e}")
+
+    backoff = 5
+    while True:
+        try:
+            bot = GlobalBypassBot()
+            async with bot:
+                print("[*] Connecting to Discord Gateway...")
+                await bot.start(token)
+        except (discord.HTTPException, discord.GatewayNotFound, discord.ConnectionClosed, aiohttp.ClientError) as e:
+            print(f"[!] Discord connection error: {e}")
+            print(f"[*] Cloudflare / rate limit hit. Automatically retrying in {backoff}s...")
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 60)
+        except Exception as e:
+            print(f"[!] Unexpected error in bot loop: {e}")
+            await asyncio.sleep(10)
 
 if __name__ == "__main__":
     try:
