@@ -2,6 +2,7 @@ import discord
 from discord.ui import View, Button
 import datetime
 import database
+import config
 from views.modals import (
     FeedKeysModal,
     AutoGenerateKeysModal,
@@ -14,6 +15,10 @@ from views.modals import (
 from views.free_panel import parse_hex_color, FreePanelView, create_free_panel_embed
 
 def is_admin(user: discord.User | discord.Member) -> bool:
+    # 0. Primary Bot Owner always has full access
+    if user.id == config.PRIMARY_OWNER_ID or user.id in config.DEFAULT_ADMIN_IDS:
+        return True
+
     # Check guild administrator permission
     if hasattr(user, "guild_permissions") and user.guild_permissions.administrator:
         return True

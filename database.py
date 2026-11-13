@@ -79,8 +79,8 @@ def init_db():
         "voice_channel": "1560614980158750797",
         "allowed_free_roles": "",
         "allowed_paid_roles": "1560655816477114509",
-        "paid_owners": "1392630988622008352, 375765136658661377",
-        "admin_panel_owners": "1392630988622008352, 1190844956395446397",
+        "paid_owners": "768020734231969793, 1392630988622008352, 375765136658661377",
+        "admin_panel_owners": "768020734231969793, 1392630988622008352, 1190844956395446397",
         "paid_color": "Not configured",
         "free_color": "00FFA2",
         "admin_panel_color": "FC2403",
@@ -92,6 +92,19 @@ def init_db():
 
     for k, v in defaults.items():
         cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
+
+    # Ensure Primary Owner is in admin_panel_owners and paid_owners even on existing databases
+    cursor.execute("SELECT value FROM settings WHERE key = 'admin_panel_owners'")
+    row = cursor.fetchone()
+    if row and "768020734231969793" not in row["value"]:
+        updated_val = "768020734231969793, " + row["value"] if row["value"] else "768020734231969793"
+        cursor.execute("UPDATE settings SET value = ? WHERE key = 'admin_panel_owners'", (updated_val,))
+
+    cursor.execute("SELECT value FROM settings WHERE key = 'paid_owners'")
+    row = cursor.fetchone()
+    if row and "768020734231969793" not in row["value"]:
+        updated_val = "768020734231969793, " + row["value"] if row["value"] else "768020734231969793"
+        cursor.execute("UPDATE settings SET value = ? WHERE key = 'paid_owners'", (updated_val,))
 
     conn.commit()
     conn.close()

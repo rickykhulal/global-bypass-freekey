@@ -27,7 +27,8 @@ class GlobalBypassBot(commands.Bot):
         super().__init__(
             command_prefix="!",
             intents=intents,
-            help_command=None
+            help_command=None,
+            owner_id=config.PRIMARY_OWNER_ID
         )
 
     async def setup_hook(self):

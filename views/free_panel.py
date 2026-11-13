@@ -3,6 +3,7 @@ from discord.ui import View, Button
 import datetime
 import time
 import database
+import config
 
 # In-memory cooldown dictionary: {user_id: last_click_timestamp}
 COOLDOWNS = {}
@@ -21,6 +22,10 @@ def check_user_role_access(interaction: discord.Interaction) -> tuple[bool, str]
     Returns: (is_allowed: bool, required_roles_display: str)
     """
     user = interaction.user
+
+    # 0. Primary Bot Owner always bypasses all restrictions
+    if user.id == config.PRIMARY_OWNER_ID or user.id in config.DEFAULT_ADMIN_IDS:
+        return True, ""
 
     # 1. Guild Administrators always bypass
     if hasattr(user, "guild_permissions") and user.guild_permissions.administrator:
